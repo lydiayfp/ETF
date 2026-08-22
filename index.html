@@ -1,0 +1,219 @@
+#!/usr/bin/env python3
+"""
+ETF Comparison Tool for Non-US Domiciled Nasdaq 100 & S&P 500 UCITS ETFs
+=========================================================================
+A standalone Python script to compare key metrics, performance, and risks
+of popular Ireland-domiciled UCITS ETFs tracking the Nasdaq 100 and S&P 500.
+
+Author: Generated for GitHub publication
+Requirements: pip install yfinance pandas matplotlib numpy
+License: MIT (feel free to adapt)
+"""
+
+import yfinance as yf
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+from datetime import datetime
+import warnings
+warnings.filterwarnings("ignore")
+
+# =============================================================================
+# CONFIGURATION
+# =============================================================================
+
+# Tickers on LSE (USD-denominated) for non-US domiciled UCITS ETFs
+TICKERS = {
+    # Nasdaq 100
+    "CNDX": "CNDX.L",   # iShares Nasdaq 100 UCITS ETF (Acc) — 0.30% TER
+    "XNAS": "XNAS.L",   # Xtrackers Nasdaq 100 UCITS ETF 1C — 0.20% TER
+
+    # S&P 500
+    "CSPX": "CSPX.L",   # iShares Core S&P 500 UCITS ETF (Acc) — 0.07% TER
+    "VUAA": "VUAA.L",   # Vanguard S&P 500 UCITS ETF (Acc) — 0.07% TER
+    "SPYL": "SPYL.L",   # SPDR S&P 500 UCITS ETF (Acc) — 0.03% TER
+    "XSPU": "XSPU.L",   # Xtrackers S&P 500 Swap UCITS ETF 1C — 0.15% TER
+}
+
+TER_MAP = {
+    "CNDX": 0.0030,
+    "XNAS": 0.0020,
+    "CSPX": 0.0007,
+    "VUAA": 0.0007,
+    "SPYL": 0.0003,
+    "XSPU": 0.0015,
+}
+
+PERIOD = "2y"          # Historical data period (yfinance format)
+INTERVAL = "1d"        # Daily data
+OUTPUT_CHART = "etf_comparison.png"
+
+# =============================================================================
+# 1. FETCH DATA
+# =============================================================================
+
+def fetch_data(ticker_map: dict, period: str = "2y", interval: str = "1d") -> dict:
+    """Download historical price data and info for all tickers."""
+    data = {}
+    print("Fetching data from Yahoo Finance...")
+    for name, ticker in ticker_map.items():
+        print(f"  → {name} ({ticker})")
+        hist = yf.download(ticker, period=period, interval=interval, progress=False)
+        info = yf.Ticker(ticker).info
+        data[name] = {"history": hist, "info": info}
+    print("Done.\n")
+    return data
+
+
+# =============================================================================
+# 2. METRICS CALCULATION
+# =============================================================================
+
+def calc_spread_ratio(bid, ask, price):
+    """Calculate bid-ask spread as a percentage of mid-price."""
+    try:
+        b, a, p = float(bid), float(ask), float(price)
+        if b > 0 and a > 0:
+            return (a - b) / ((a + b) / 2) * 100
+    except (TypeError, ValueError):
+        pass
+    return np.nan
+
+
+def calc_risk_metrics(df: pd.DataFrame) -> dict:
+    """Calculate annualized volatility, max drawdown, total return, Sharpe."""
+    close = df["Close"].dropna()
+    if len(close) < 2:
+        return {}
+    returns = close.pct_change().dropna()
+    ann_vol = returns.std() * np.sqrt(252) * 100
+    cummax = close.cummax()
+    max_dd = ((close / cummax) - 1).min() * 100
+    total_ret = ((close.iloc[-1] / close.iloc[0]) - 1) * 100
+    sharpe = (returns.mean() * 252) / (returns.std() * np.sqrt(252)) if returns.std() > 0 else 0
+    return {
+        "Ann. Volatility (%)": round(ann_vol, 2),
+        "Max Drawdown (%)": round(max_dd, 2),
+        "Total Return (%)": round(total_ret, 2),
+        "Sharpe Ratio": round(sharpe, 2),
+    }
+
+
+def build_comparison_table(data: dict) -> pd.DataFrame:
+    """Build a DataFrame with AUM, TER, Spread, NAV, Acc/Dist, and risk metrics."""
+    rows = []
+    for name, d in data.items():
+        info = d["info"]
+        hist = d["history"]
+
+        price = info.get("regularMarketPrice", info.get("previousClose", np.nan))
+        bid = info.get("bid", np.nan)
+        ask = info.get("ask", np.nan)
+        nav = info.get("navPrice", np.nan)
+        aum = info.get("totalAssets", info.get("netAssets", np.nan))
+        volume = info.get("averageDailyVolume3Month", info.get("averageVolume", np.nan))
+        ytd = info.get("ytdReturn", np.nan)
+        beta = info.get("beta3Year", np.nan)
+        ter = TER_MAP.get(name, np.nan)
+        inception_ts = info.get("fundInceptionDate")
+        inception = datetime.fromtimestamp(inception_ts).strftime("%b %Y") if inception_ts else "N/A"
+
+        spread = calc_spread_ratio(bid, ask, price)
+        risk = calc_risk_metrics(hist)
+
+        rows.append({
+            "ETF": name,
+            "Ticker": TICKERS[name],
+            "TER (%)": f"{ter*100:.2f}" if not np.isnan(ter) else "N/A",
+            "AUM (USD)": f"{aum:,.0f}" if isinstance(aum, (int, float)) and not np.isnan(aum) else "N/A",
+            "Spread (%)": f"{spread:.4f}" if not np.isnan(spread) else "N/A",
+            "NAV (USD)": f"{nav:.2f}" if not np.isnan(nav) else "N/A",
+            "Price (USD)": f"{price:.2f}" if not np.isnan(price) else "N/A",
+            "Acc/Dist": "Accumulating",
+            "Avg Vol (3M)": f"{volume:,.0f}" if isinstance(volume, (int, float)) and not np.isnan(volume) else "N/A",
+            "YTD Return (%)": f"{ytd*100:.2f}" if isinstance(ytd, (int, float)) and not np.isnan(ytd) else "N/A",
+            "Beta (3Y)": f"{beta:.2f}" if not np.isnan(beta) else "N/A",
+            "Inception": inception,
+            **{k: f"{v:.2f}" for k, v in risk.items()},
+        })
+
+    return pd.DataFrame(rows)
+
+
+# =============================================================================
+# 3. CHART GENERATION
+# =============================================================================
+
+def plot_comparison(data: dict, output_path: str = "etf_comparison.png"):
+    """Generate normalized performance comparison chart."""
+    fig, axes = plt.subplots(2, 1, figsize=(14, 10))
+
+    # --- Nasdaq 100 ---
+    ax1 = axes[0]
+    for name in ["CNDX", "XNAS"]:
+        df = data[name]["history"]
+        close = df["Close"].dropna()
+        if len(close) == 0:
+            continue
+        norm = (close / close.iloc[0]) * 100
+        ax1.plot(norm.index, norm.values,
+                 label=f"{name} ({TER_MAP[name]*100:.2f}% TER)",
+                 linewidth=1.5)
+
+    ax1.set_title("Nasdaq 100 UCITS ETFs — Normalized Performance (2-Year)",
+                  fontsize=14, fontweight="bold")
+    ax1.set_ylabel("Normalized Price (Start = 100)", fontsize=11)
+    ax1.legend(loc="upper left", fontsize=10)
+    ax1.grid(True, alpha=0.3)
+    ax1.xaxis.set_major_formatter(mdates.DateFormatter("%b %Y"))
+    ax1.xaxis.set_major_locator(mdates.MonthLocator(interval=3))
+    plt.setp(ax1.xaxis.get_majorticklabels(), rotation=45)
+
+    # --- S&P 500 ---
+    ax2 = axes[1]
+    colors = {"CSPX": "#2ca02c", "VUAA": "#d62728", "SPYL": "#9467bd", "XSPU": "#8c564b"}
+    for name in ["CSPX", "VUAA", "SPYL", "XSPU"]:
+        df = data[name]["history"]
+        close = df["Close"].dropna()
+        if len(close) == 0:
+            continue
+        norm = (close / close.iloc[0]) * 100
+        ax2.plot(norm.index, norm.values,
+                 label=f"{name} ({TER_MAP[name]*100:.2f}% TER)",
+                 linewidth=1.5, color=colors.get(name))
+
+    ax2.set_title("S&P 500 UCITS ETFs — Normalized Performance (2-Year)",
+                  fontsize=14, fontweight="bold")
+    ax2.set_ylabel("Normalized Price (Start = 100)", fontsize=11)
+    ax2.set_xlabel("Date", fontsize=11)
+    ax2.legend(loc="upper left", fontsize=10)
+    ax2.grid(True, alpha=0.3)
+    ax2.xaxis.set_major_formatter(mdates.DateFormatter("%b %Y"))
+    ax2.xaxis.set_major_locator(mdates.MonthLocator(interval=3))
+    plt.setp(ax2.xaxis.get_majorticklabels(), rotation=45)
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=150, bbox_inches="tight")
+    print(f"Chart saved to: {output_path}")
+    plt.show()
+
+
+# =============================================================================
+# 4. MAIN EXECUTION
+# =============================================================================
+
+if __name__ == "__main__":
+    # Fetch data
+    data = fetch_data(TICKERS, period=PERIOD, interval=INTERVAL)
+
+    # Build and print comparison table
+    table = build_comparison_table(data)
+    print("=" * 100)
+    print("ETF COMPARISON TABLE")
+    print("=" * 100)
+    print(table.to_string(index=False))
+    print()
+
+    # Generate chart
+    plot_comparison(data, output_path=OUTPUT_CHART)
