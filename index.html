@@ -1,4 +1,409 @@
-#!/usr/bin/env python3
+<h2 class="sr-only">Interactive calculator showing compound growth of an ETF investment over 10, 15, 20 and 30 years, comparing gross returns against returns net of the total expense ratio, for four Ireland and Luxembourg domiciled UCITS ETFs</h2>
+
+<div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:1rem;">
+  <div style="flex:1; min-width:200px;">
+    <label style="font-size:13px; color:var(--text-secondary); display:block; margin-bottom:4px;">ETF</label>
+    <select id="etfSelect" style="width:100%;">
+      <optgroup label="Global / All-World equity">
+        <option value="VWRA">VWRA — Vanguard FTSE All-World</option>
+        <option value="FWRA">FWRA — Invesco FTSE All-World</option>
+        <option value="ACWD">ACWD — SPDR MSCI ACWI</option>
+        <option value="ISAC">ISAC — iShares MSCI ACWI</option>
+        <option value="IMID">IMID — SPDR MSCI ACWI IMI</option>
+        <option value="IWDA">IWDA — iShares Core MSCI World</option>
+        <option value="LCUW">LCUW — Amundi Core MSCI World</option>
+        <option value="V3AA">V3AA — Vanguard ESG Global All Cap</option>
+        <option value="EXUS">EXUS — Xtrackers MSCI World ex USA</option>
+      </optgroup>
+      <optgroup label="US equity">
+        <option value="VUAA">VUAA — Vanguard S&amp;P 500</option>
+        <option value="CSPX">CSPX — iShares Core S&amp;P 500</option>
+        <option value="CNDX">CNDX — iShares Nasdaq 100</option>
+        <option value="XNAQ">XNAQ — Xtrackers Nasdaq 100</option>
+      </optgroup>
+      <optgroup label="Emerging markets & bonds">
+        <option value="EIMI">EIMI — iShares Core MSCI EM IMI</option>
+        <option value="AGGG">AGGG — iShares Core Global Aggregate Bond</option>
+      </optgroup>
+      <optgroup label="Hong Kong domiciled (not UCITS — flagged)">
+        <option value="HK2823">2823 — iShares FTSE China A50</option>
+        <option value="HK3010">3010 — iShares Core MSCI Asia ex Japan</option>
+      </optgroup>
+    </select>
+  </div>
+  <div style="flex:1; min-width:140px;">
+    <label style="font-size:13px; color:var(--text-secondary); display:block; margin-bottom:4px;">Initial lump sum</label>
+    <input type="number" id="lumpSum" value="10000" min="0" step="500" style="width:100%;" />
+  </div>
+  <div style="flex:1; min-width:140px;">
+    <label style="font-size:13px; color:var(--text-secondary); display:block; margin-bottom:4px;">Monthly top-up</label>
+    <input type="number" id="monthlyTopup" value="500" min="0" step="50" style="width:100%;" />
+  </div>
+  <div style="flex:1; min-width:140px;">
+    <label style="font-size:13px; color:var(--text-secondary); display:block; margin-bottom:4px;">Assumed gross return, % p.a.</label>
+    <input type="number" id="grossReturn" value="7" min="0" max="20" step="0.1" style="width:100%;" />
+  </div>
+</div>
+
+<div style="display:flex; gap:8px; margin-bottom:1.25rem;">
+  <button id="btnValue" style="flex:1;">Growth: gross vs net of TER</button>
+  <button id="btnFee" style="flex:1;">TER cost impact only</button>
+</div>
+
+<div id="fundCard" style="background:var(--surface-1); border-radius:12px; padding:1rem 1.25rem; margin-bottom:1.25rem; display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:12px;">
+</div>
+
+<div style="position:relative; width:100%; height:300px; margin-bottom:1.25rem;">
+  <canvas id="growthChart" role="img" aria-label="Line chart of projected portfolio value over 30 years">Projected portfolio growth chart.</canvas>
+</div>
+
+<div style="display:flex; flex-wrap:wrap; gap:16px; margin-bottom:1rem; font-size:12px; color:var(--text-secondary);" id="legendRow"></div>
+
+<div id="tierBoxes" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:12px;"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const ETFS = {
+  VWRA: {
+    name: "Vanguard FTSE All-World UCITS ETF (USD) Acc",
+    domicile: "Ireland", isin: "IE00BK5BQT80",
+    nav: 193.50, navCcy: "USD", navDate: "19 Aug 2026 (LSE)",
+    aum: 48732, aumCcy: "EUR",
+    ter: 0.14, trackDiff: null,
+    replication: "Physical (sampling)"
+  },
+  FWRA: {
+    name: "Invesco FTSE All-World UCITS ETF Acc",
+    domicile: "Ireland", isin: "IE000716YHJ7",
+    nav: null, navCcy: "USD", navDate: "n/a",
+    aum: 4200, aumCcy: "USD",
+    ter: 0.15, trackDiff: null,
+    replication: "Physical (optimized sampling)"
+  },
+  ACWD: {
+    name: "SPDR MSCI ACWI UCITS ETF Acc",
+    domicile: "Ireland", isin: "IE00B44Z5B48",
+    nav: null, navCcy: "USD", navDate: "n/a",
+    aum: 16500, aumCcy: "USD",
+    ter: 0.12, trackDiff: null,
+    replication: "Physical (optimized sampling)"
+  },
+  ISAC: {
+    name: "iShares MSCI ACWI UCITS ETF USD Acc",
+    domicile: "Ireland", isin: "IE00B6R52259",
+    nav: 125.35, navCcy: "USD", navDate: "14 Aug 2026 (LSE)",
+    aum: 30918, aumCcy: "EUR",
+    ter: 0.20, trackDiff: null,
+    replication: "Physical (sampling)"
+  },
+  IMID: {
+    name: "SPDR MSCI ACWI IMI UCITS ETF Acc",
+    domicile: "Ireland", isin: "IE00B3YLTY66",
+    nav: null, navCcy: "USD", navDate: "n/a",
+    aum: 7174, aumCcy: "EUR",
+    ter: 0.17, trackDiff: null,
+    replication: "Physical (optimised)"
+  },
+  V3AA: {
+    name: "Vanguard ESG Global All Cap UCITS ETF (USD) Acc",
+    domicile: "Ireland", isin: "IE00BNG8L278",
+    nav: null, navCcy: "USD", navDate: "n/a",
+    aum: 1553, aumCcy: "USD",
+    ter: 0.24, trackDiff: 0.08,
+    replication: "Physical"
+  },
+  CSPX: {
+    name: "iShares Core S&P 500 UCITS ETF USD Acc",
+    domicile: "Ireland", isin: "IE00B5BMR087",
+    nav: 833.71, navCcy: "USD", navDate: "12 Aug 2026 (LSE)",
+    aum: 146691, aumCcy: "USD",
+    ter: 0.07, trackDiff: null,
+    replication: "Physical (full replication)"
+  },
+  CNDX: {
+    name: "iShares NASDAQ 100 UCITS ETF USD Acc",
+    domicile: "Ireland", isin: "IE00B53SZB19",
+    nav: null, navCcy: "USD", navDate: "n/a",
+    aum: 22150, aumCcy: "USD",
+    ter: 0.33, trackDiff: null,
+    replication: "Physical (full replication)"
+  },
+  XNAQ: {
+    name: "Xtrackers Nasdaq 100 UCITS ETF 1C",
+    domicile: "Ireland", isin: "IE00BMFKG444",
+    nav: 70.51, navCcy: "GBP", navDate: "23 Jun 2026 (LSE)",
+    aum: 1858, aumCcy: "GBP",
+    ter: 0.20, trackDiff: null,
+    replication: "Physical (full replication)"
+  },
+  EIMI: {
+    name: "iShares Core MSCI EM IMI UCITS ETF USD Acc",
+    domicile: "Ireland", isin: "IE00BKM4GZ66",
+    nav: 53.85, navCcy: "USD", navDate: "4 Aug 2026 (LSE)",
+    aum: 38224, aumCcy: "EUR",
+    ter: 0.18, trackDiff: null,
+    replication: "Physical (full replication)"
+  },
+  EXUS: {
+    name: "Xtrackers MSCI World ex USA UCITS ETF 1C",
+    domicile: "Ireland", isin: "IE0006WW1TQ4",
+    nav: 47.30, navCcy: "USD", navDate: "14 Aug 2026 (LSE)",
+    aum: 6800, aumCcy: "EUR",
+    ter: 0.15, trackDiff: null,
+    replication: "Physical (full replication)"
+  },
+  HK2823: {
+    name: "iShares FTSE China A50 ETF",
+    domicile: "Hong Kong", isin: "HK2823028546",
+    nav: 17.12, navCcy: "HKD", navDate: "27 Jul 2026 (HKEX)",
+    aum: 13420, aumCcy: "HKD",
+    ter: 0.99, trackDiff: null,
+    replication: "Synthetic (swaps + A-share access products)"
+  },
+  HK3010: {
+    name: "iShares Core MSCI Asia ex Japan ETF",
+    domicile: "Hong Kong", isin: "HK0000051877",
+    nav: 76.64, navCcy: "HKD", navDate: "10 Mar 2026 (HKEX)",
+    aum: 8430, aumCcy: "HKD",
+    ter: 0.33, trackDiff: null,
+    replication: "Physical (sampling)"
+  },
+  AGGG: {
+    name: "iShares Core Global Aggregate Bond UCITS ETF",
+    domicile: "Ireland", isin: "IE00BDBRDM35 (share class)",
+    nav: null, navCcy: "USD", navDate: "n/a",
+    aum: 2512, aumCcy: "EUR",
+    ter: 0.10, trackDiff: null,
+    replication: "Physical (sampling)"
+  },
+  VUAA: {
+    name: "Vanguard S&P 500 UCITS ETF (USD) Acc",
+    domicile: "Ireland", isin: "IE00BFMXXD54",
+    nav: 127.54, navCcy: "EUR", navDate: "Aug 2026",
+    aum: 30800, aumCcy: "EUR",
+    ter: 0.07, trackDiff: 0.02,
+    replication: "Physical (full replication)"
+  },
+  IWDA: {
+    name: "iShares Core MSCI World UCITS ETF (Acc)",
+    domicile: "Ireland", isin: "IE00B4L5Y983",
+    nav: 128.35, navCcy: "EUR", navDate: "Aug 2026",
+    aum: 129600, aumCcy: "EUR",
+    ter: 0.20, trackDiff: 0.03,
+    replication: "Physical (optimized sampling)"
+  },
+  LCUW: {
+    name: "Amundi Core MSCI World UCITS ETF Acc",
+    domicile: "Luxembourg", isin: "LU1781541179",
+    nav: null, navCcy: "USD", navDate: "n/a",
+    aum: 6890, aumCcy: "USD",
+    ter: 0.12, trackDiff: 0.06,
+    replication: "Physical (full replication)"
+  }
+};
+
+const HORIZONS = [10, 15, 20, 30];
+let viewMode = "value";
+
+const etfSelect = document.getElementById("etfSelect");
+const lumpSumEl = document.getElementById("lumpSum");
+const monthlyEl = document.getElementById("monthlyTopup");
+const grossReturnEl = document.getElementById("grossReturn");
+const btnValue = document.getElementById("btnValue");
+const btnFee = document.getElementById("btnFee");
+const fundCard = document.getElementById("fundCard");
+const legendRow = document.getElementById("legendRow");
+const tierBoxes = document.getElementById("tierBoxes");
+
+function fmtMoney(v) {
+  return "$" + Math.round(v).toLocaleString("en-US");
+}
+function fmtAum(v, ccy) {
+  const symbol = ccy === "EUR" ? "\u20ac" : "$";
+  return symbol + (v / 1000).toFixed(1) + "B";
+}
+
+function fv(lump, monthly, annualRate, years) {
+  const rm = Math.pow(1 + annualRate, 1 / 12) - 1;
+  const n = years * 12;
+  if (rm === 0) return lump + monthly * n;
+  const growthLump = lump * Math.pow(1 + rm, n);
+  const growthContrib = monthly * ((Math.pow(1 + rm, n) - 1) / rm);
+  return growthLump + growthContrib;
+}
+
+function buildSeries() {
+  const lump = parseFloat(lumpSumEl.value) || 0;
+  const monthly = parseFloat(monthlyEl.value) || 0;
+  const gross = (parseFloat(grossReturnEl.value) || 0) / 100;
+  const ter = ETFS[etfSelect.value].ter / 100;
+  const net = Math.max(gross - ter, -0.99);
+  const years = Array.from({ length: 31 }, (_, i) => i);
+  const grossSeries = years.map((y) => fv(lump, monthly, gross, y));
+  const netSeries = years.map((y) => fv(lump, monthly, net, y));
+  const feeSeries = years.map((y, i) => grossSeries[i] - netSeries[i]);
+  return { years, grossSeries, netSeries, feeSeries };
+}
+
+function renderFundCard() {
+  const e = ETFS[etfSelect.value];
+  const domBg = e.domicile === "Ireland" ? "#E6F1FB" : e.domicile === "Luxembourg" ? "#EEEDFE" : "#FDECEC";
+  const domTx = e.domicile === "Ireland" ? "#0C447C" : e.domicile === "Luxembourg" ? "#3C3489" : "#9A2E2E";
+  const domNote = e.domicile === "Hong Kong" ? "<p style=\"font-size:11px; color:var(--text-muted); margin:4px 0 0;\">Not UCITS \u2014 flagged as outside the Ireland/Luxembourg screen</p>" : "";
+  fundCard.innerHTML = `
+    <div>
+      <p style="font-size:12px; color:var(--text-secondary); margin:0 0 4px;">Fund</p>
+      <p style="font-size:14px; font-weight:500; margin:0;">${e.name}</p>
+      <p style="font-size:12px; color:var(--text-muted); margin:4px 0 0;">${e.isin}</p>
+    </div>
+    <div>
+      <p style="font-size:12px; color:var(--text-secondary); margin:0 0 4px;">Domicile</p>
+      <span style="display:inline-block; background:${domBg}; color:${domTx}; font-size:12px; font-weight:500; padding:2px 10px; border-radius:var(--radius);">${e.domicile}</span>
+      ${domNote}
+    </div>
+    <div>
+      <p style="font-size:12px; color:var(--text-secondary); margin:0 0 4px;">NAV / spot</p>
+      <p style="font-size:14px; font-weight:500; margin:0;">${e.nav ? (e.navCcy === "EUR" ? "\u20ac" : "$") + e.nav.toFixed(2) : "n/a"}</p>
+      <p style="font-size:12px; color:var(--text-muted); margin:4px 0 0;">${e.navDate}</p>
+    </div>
+    <div>
+      <p style="font-size:12px; color:var(--text-secondary); margin:0 0 4px;">AUM</p>
+      <p style="font-size:14px; font-weight:500; margin:0;">${fmtAum(e.aum, e.aumCcy)}</p>
+    </div>
+    <div>
+      <p style="font-size:12px; color:var(--text-secondary); margin:0 0 4px;">TER</p>
+      <p style="font-size:14px; font-weight:500; margin:0;">${e.ter.toFixed(2)}%</p>
+    </div>
+    <div>
+      <p style="font-size:12px; color:var(--text-secondary); margin:0 0 4px;">Tracking difference</p>
+      <p style="font-size:14px; font-weight:500; margin:0;">${e.trackDiff !== null ? e.trackDiff.toFixed(2) + "%" : "not published"}</p>
+    </div>
+    <div>
+      <p style="font-size:12px; color:var(--text-secondary); margin:0 0 4px;">Replication</p>
+      <p style="font-size:14px; font-weight:500; margin:0;">${e.replication}</p>
+    </div>
+    <div>
+      <p style="font-size:12px; color:var(--text-secondary); margin:0 0 4px;">Bid-ask spread / volume</p>
+      <p style="font-size:13px; margin:0; color:var(--text-secondary);">Check live broker quote — not reliably available via static data pull</p>
+    </div>
+  `;
+}
+
+function renderLegend() {
+  if (viewMode === "value") {
+    legendRow.innerHTML = `
+      <span style="display:flex; align-items:center; gap:4px;"><span style="width:10px; height:10px; border-radius:2px; background:#2a78d6;"></span>Gross (before TER)</span>
+      <span style="display:flex; align-items:center; gap:4px;"><span style="width:10px; height:10px; border-radius:2px; background:#eb6834;"></span>Net of TER</span>
+    `;
+  } else {
+    legendRow.innerHTML = `
+      <span style="display:flex; align-items:center; gap:4px;"><span style="width:10px; height:10px; border-radius:2px; background:#e34948;"></span>Cumulative TER cost (gross minus net)</span>
+    `;
+  }
+}
+
+let chart;
+function renderChart() {
+  const { years, grossSeries, netSeries, feeSeries } = buildSeries();
+  const ctx = document.getElementById("growthChart");
+  const datasets =
+    viewMode === "value"
+      ? [
+          {
+            label: "Gross",
+            data: grossSeries,
+            borderColor: "#2a78d6",
+            borderDash: [5, 3],
+            borderWidth: 2,
+            pointRadius: (c) => (HORIZONS.includes(c.dataIndex) ? 5 : 0),
+            pointBackgroundColor: "#2a78d6",
+            tension: 0.15
+          },
+          {
+            label: "Net of TER",
+            data: netSeries,
+            borderColor: "#eb6834",
+            borderWidth: 2,
+            pointRadius: (c) => (HORIZONS.includes(c.dataIndex) ? 5 : 0),
+            pointBackgroundColor: "#eb6834",
+            tension: 0.15
+          }
+        ]
+      : [
+          {
+            label: "TER cost",
+            data: feeSeries,
+            borderColor: "#e34948",
+            backgroundColor: "rgba(227,73,72,0.1)",
+            fill: true,
+            borderWidth: 2,
+            pointRadius: (c) => (HORIZONS.includes(c.dataIndex) ? 5 : 0),
+            pointBackgroundColor: "#e34948",
+            tension: 0.15
+          }
+        ];
+
+  if (chart) chart.destroy();
+  chart = new Chart(ctx, {
+    type: "line",
+    data: { labels: years.map((y) => "Yr " + y), datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { maxTicksLimit: 8, color: "#898781" } },
+        y: {
+          grid: { color: "#e1e0d9" },
+          ticks: { callback: (v) => fmtMoney(v), color: "#898781" }
+        }
+      }
+    }
+  });
+}
+
+function renderTiers() {
+  const { grossSeries, netSeries, feeSeries } = buildSeries();
+  tierBoxes.innerHTML = HORIZONS.map((h) => {
+    const g = grossSeries[h];
+    const n = netSeries[h];
+    const f = feeSeries[h];
+    const body =
+      viewMode === "value"
+        ? `<p style="font-size:20px; font-weight:500; margin:2px 0;">${fmtMoney(n)}</p>
+           <p style="font-size:12px; color:var(--text-secondary); margin:0;">Gross: ${fmtMoney(g)}</p>
+           <p style="font-size:12px; color:var(--text-muted); margin:2px 0 0;">TER drag: -${fmtMoney(f)}</p>`
+        : `<p style="font-size:20px; font-weight:500; margin:2px 0; color:var(--text-danger);">-${fmtMoney(f)}</p>
+           <p style="font-size:12px; color:var(--text-secondary); margin:0;">${((f / g) * 100).toFixed(1)}% of gross value</p>`;
+    return `<div style="background:var(--surface-1); border-radius:var(--radius); padding:1rem;">
+      <p style="font-size:13px; color:var(--text-secondary); margin:0;">${h} years</p>
+      ${body}
+    </div>`;
+  }).join("");
+}
+
+function renderAll() {
+  renderFundCard();
+  renderLegend();
+  renderChart();
+  renderTiers();
+}
+
+[etfSelect, lumpSumEl, monthlyEl, grossReturnEl].forEach((el) =>
+  el.addEventListener("input", renderAll)
+);
+btnValue.addEventListener("click", () => {
+  viewMode = "value";
+  renderAll();
+});
+btnFee.addEventListener("click", () => {
+  viewMode = "fee";
+  renderAll();
+});
+
+renderAll();
+</script>
+
 """
 ETF Comparison Tool for Non-US Domiciled Nasdaq 100 & S&P 500 UCITS ETFs
 =========================================================================
