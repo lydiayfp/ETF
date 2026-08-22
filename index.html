@@ -303,7 +303,34 @@
         <option value="HK2823">2823 — iShares FTSE China A50</option>
         <option value="HK3010">3010 — iShares Core MSCI Asia ex Japan</option>
       </optgroup>
+      <optgroup label="Custom">
+        <option value="CUSTOM">+ Custom ticker (ETF or stock)</option>
+      </optgroup>
     </select>
+  </div>
+
+  <div id="customPanel" style="display:none;">
+    <div class="grid-2">
+      <div class="field">
+        <label class="field-label" for="customTicker">Ticker / name</label>
+        <input type="text" id="customTicker" placeholder="e.g. AAPL, or your ETF" />
+      </div>
+      <div class="field">
+        <label class="field-label" for="customDomicile">Domicile (optional)</label>
+        <input type="text" id="customDomicile" placeholder="e.g. USA, Ireland" />
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label class="field-label" for="customTer">TER / expense ratio, % (use 0 for individual stocks)</label>
+        <input type="number" id="customTer" value="0" min="0" max="5" step="0.01" />
+      </div>
+      <div class="field">
+        <label class="field-label" for="customNav">Current price / NAV (optional)</label>
+        <input type="number" id="customNav" min="0" step="0.01" placeholder="e.g. 195.40" />
+      </div>
+    </div>
+    <p class="data-caveat" style="margin:-6px 0 18px;">Custom entries use figures you supply — nothing is fetched automatically for tickers outside the curated list above.</p>
   </div>
 
   <div class="grid-2">
@@ -346,19 +373,19 @@
 <script>
 const ETFS = {
   VWRA: { name: "Vanguard FTSE All-World UCITS ETF (USD) Acc", domicile: "Ireland", isin: "IE00BK5BQT80", nav: 193.50, navCcy: "USD", navDate: "19 Aug 2026 (LSE)", aum: 48732, aumCcy: "EUR", ter: 0.14, trackDiff: null, replication: "Physical (sampling)" },
-  FWRA: { name: "Invesco FTSE All-World UCITS ETF Acc", domicile: "Ireland", isin: "IE000716YHJ7", nav: null, navCcy: "USD", navDate: "n/a", aum: 4200, aumCcy: "USD", ter: 0.15, trackDiff: null, replication: "Physical (optimized sampling)" },
-  ACWD: { name: "SPDR MSCI ACWI UCITS ETF Acc", domicile: "Ireland", isin: "IE00B44Z5B48", nav: null, navCcy: "USD", navDate: "n/a", aum: 16500, aumCcy: "USD", ter: 0.12, trackDiff: null, replication: "Physical (optimized sampling)" },
+  FWRA: { name: "Invesco FTSE All-World UCITS ETF Acc", domicile: "Ireland", isin: "IE000716YHJ7", nav: 9.16, navCcy: "USD", navDate: "20 Jul 2026 (Cbonds)", aum: 4547, aumCcy: "EUR", ter: 0.15, trackDiff: null, replication: "Physical (sampling)" },
+  ACWD: { name: "SPDR MSCI ACWI UCITS ETF Acc", domicile: "Ireland", isin: "IE00B44Z5B48", nav: 324.69, navCcy: "USD", navDate: "15 Jun 2026 (LSE)", aum: 17700, aumCcy: "USD", ter: 0.12, trackDiff: null, replication: "Physical (optimized sampling)" },
   ISAC: { name: "iShares MSCI ACWI UCITS ETF USD Acc", domicile: "Ireland", isin: "IE00B6R52259", nav: 125.35, navCcy: "USD", navDate: "14 Aug 2026 (LSE)", aum: 30918, aumCcy: "EUR", ter: 0.20, trackDiff: null, replication: "Physical (sampling)" },
-  IMID: { name: "SPDR MSCI ACWI IMI UCITS ETF Acc", domicile: "Ireland", isin: "IE00B3YLTY66", nav: null, navCcy: "USD", navDate: "n/a", aum: 7174, aumCcy: "EUR", ter: 0.17, trackDiff: null, replication: "Physical (optimised)" },
-  V3AA: { name: "Vanguard ESG Global All Cap UCITS ETF (USD) Acc", domicile: "Ireland", isin: "IE00BNG8L278", nav: null, navCcy: "USD", navDate: "n/a", aum: 1553, aumCcy: "USD", ter: 0.24, trackDiff: 0.08, replication: "Physical" },
+  IMID: { name: "SPDR MSCI ACWI IMI UCITS ETF Acc", domicile: "Ireland", isin: "IE00B3YLTY66", nav: 13.54, navCcy: "USD", navDate: "14 Aug 2026 (LSE)", aum: 7173, aumCcy: "EUR", ter: 0.17, trackDiff: null, replication: "Physical (optimised)" },
+  V3AA: { name: "Vanguard ESG Global All Cap UCITS ETF (USD) Acc", domicile: "Ireland", isin: "IE00BNG8L278", nav: 8.80, navCcy: "USD", navDate: "1 Jun 2026 (LSE)", aum: 1310, aumCcy: "USD", ter: 0.24, trackDiff: 0.08, replication: "Physical" },
   EXUS: { name: "Xtrackers MSCI World ex USA UCITS ETF 1C", domicile: "Ireland", isin: "IE0006WW1TQ4", nav: 47.30, navCcy: "USD", navDate: "14 Aug 2026 (LSE)", aum: 6800, aumCcy: "EUR", ter: 0.15, trackDiff: null, replication: "Physical (full replication)" },
   CSPX: { name: "iShares Core S&P 500 UCITS ETF USD Acc", domicile: "Ireland", isin: "IE00B5BMR087", nav: 833.71, navCcy: "USD", navDate: "12 Aug 2026 (LSE)", aum: 146691, aumCcy: "USD", ter: 0.07, trackDiff: null, replication: "Physical (full replication)" },
-  CNDX: { name: "iShares NASDAQ 100 UCITS ETF USD Acc", domicile: "Ireland", isin: "IE00B53SZB19", nav: null, navCcy: "USD", navDate: "n/a", aum: 22150, aumCcy: "USD", ter: 0.33, trackDiff: null, replication: "Physical (full replication)" },
+  CNDX: { name: "iShares NASDAQ 100 UCITS ETF USD Acc", domicile: "Ireland", isin: "IE00B53SZB19", nav: 1677.81, navCcy: "USD", navDate: "20 Aug 2026 (iShares)", aum: 27924, aumCcy: "USD", ter: 0.30, trackDiff: null, replication: "Physical (full replication)" },
   XNAQ: { name: "Xtrackers Nasdaq 100 UCITS ETF 1C", domicile: "Ireland", isin: "IE00BMFKG444", nav: 70.51, navCcy: "GBP", navDate: "23 Jun 2026 (LSE)", aum: 1858, aumCcy: "GBP", ter: 0.20, trackDiff: null, replication: "Physical (full replication)" },
   EIMI: { name: "iShares Core MSCI EM IMI UCITS ETF USD Acc", domicile: "Ireland", isin: "IE00BKM4GZ66", nav: 53.85, navCcy: "USD", navDate: "4 Aug 2026 (LSE)", aum: 38224, aumCcy: "EUR", ter: 0.18, trackDiff: null, replication: "Physical (full replication)" },
   HK2823: { name: "iShares FTSE China A50 ETF", domicile: "Hong Kong", isin: "HK2823028546", nav: 17.12, navCcy: "HKD", navDate: "27 Jul 2026 (HKEX)", aum: 13420, aumCcy: "HKD", ter: 0.99, trackDiff: null, replication: "Synthetic (swaps + A-share access products)" },
   HK3010: { name: "iShares Core MSCI Asia ex Japan ETF", domicile: "Hong Kong", isin: "HK0000051877", nav: 76.64, navCcy: "HKD", navDate: "10 Mar 2026 (HKEX)", aum: 8430, aumCcy: "HKD", ter: 0.33, trackDiff: null, replication: "Physical (sampling)" },
-  AGGG: { name: "iShares Core Global Aggregate Bond UCITS ETF", domicile: "Ireland", isin: "IE00BDBRDM35 (share class)", nav: null, navCcy: "USD", navDate: "n/a", aum: 2512, aumCcy: "EUR", ter: 0.10, trackDiff: null, replication: "Physical (sampling)" },
+  AGGG: { name: "iShares Core Global Aggregate Bond UCITS ETF USD (Dist)", domicile: "Ireland", isin: "IE00B3F81409", nav: 4.32, navCcy: "USD", navDate: "5 Aug 2026 (LSE)", aum: 14225, aumCcy: "USD", ter: 0.10, trackDiff: null, replication: "Physical (sampling)" },
   VUAA: { name: "Vanguard S&P 500 UCITS ETF (USD) Acc", domicile: "Ireland", isin: "IE00BFMXXD54", nav: 127.54, navCcy: "EUR", navDate: "Aug 2026", aum: 30800, aumCcy: "EUR", ter: 0.07, trackDiff: 0.02, replication: "Physical (full replication)" },
   IWDA: { name: "iShares Core MSCI World UCITS ETF (Acc)", domicile: "Ireland", isin: "IE00B4L5Y983", nav: 128.35, navCcy: "EUR", navDate: "Aug 2026", aum: 129600, aumCcy: "EUR", ter: 0.20, trackDiff: 0.03, replication: "Physical (optimized sampling)" },
   LCUW: { name: "Amundi Core MSCI World UCITS ETF Acc", domicile: "Luxembourg", isin: "LU1781541179", nav: null, navCcy: "USD", navDate: "n/a", aum: 6890, aumCcy: "USD", ter: 0.12, trackDiff: 0.06, replication: "Physical (full replication)" }
@@ -368,6 +395,11 @@ const HORIZONS = [10, 15, 20, 30];
 let viewMode = "value";
 
 const etfSelect = document.getElementById("etfSelect");
+const customPanel = document.getElementById("customPanel");
+const customTicker = document.getElementById("customTicker");
+const customDomicile = document.getElementById("customDomicile");
+const customTer = document.getElementById("customTer");
+const customNav = document.getElementById("customNav");
 const lumpSumEl = document.getElementById("lumpSum");
 const monthlyEl = document.getElementById("monthlyTopup");
 const grossReturnEl = document.getElementById("grossReturn");
@@ -377,8 +409,28 @@ const fundCard = document.getElementById("fundCard");
 const legendRow = document.getElementById("legendRow");
 const tierBoxes = document.getElementById("tierBoxes");
 
+function getActiveFund() {
+  if (etfSelect.value === "CUSTOM") {
+    return {
+      name: customTicker.value.trim() || "Custom entry",
+      domicile: customDomicile.value.trim() || "Not specified",
+      isin: "user-supplied",
+      nav: customNav.value ? parseFloat(customNav.value) : null,
+      navCcy: "USD",
+      navDate: customNav.value ? "as entered" : "n/a",
+      aum: null,
+      aumCcy: "USD",
+      ter: parseFloat(customTer.value) || 0,
+      trackDiff: null,
+      replication: "Not specified — user-supplied entry"
+    };
+  }
+  return ETFS[etfSelect.value];
+}
+
 function fmtMoney(v) { return "$" + Math.round(v).toLocaleString("en-US"); }
 function fmtAum(v, ccy) {
+  if (v === null || v === undefined) return "not specified";
   const symbol = ccy === "EUR" ? "\u20ac" : ccy === "GBP" ? "\u00a3" : ccy === "HKD" ? "HK$" : "$";
   return symbol + (v / 1000).toFixed(1) + "B";
 }
@@ -396,7 +448,7 @@ function buildSeries() {
   const lump = parseFloat(lumpSumEl.value) || 0;
   const monthly = parseFloat(monthlyEl.value) || 0;
   const gross = (parseFloat(grossReturnEl.value) || 0) / 100;
-  const ter = ETFS[etfSelect.value].ter / 100;
+  const ter = getActiveFund().ter / 100;
   const net = Math.max(gross - ter, -0.99);
   const years = Array.from({ length: 31 }, (_, i) => i);
   const grossSeries = years.map((y) => fv(lump, monthly, gross, y));
@@ -406,14 +458,18 @@ function buildSeries() {
 }
 
 function renderFundCard() {
-  const e = ETFS[etfSelect.value];
+  const e = getActiveFund();
   const domStyle = e.domicile === "Ireland"
     ? "background:#DCE6DE; color:#2F4A3C;"
     : e.domicile === "Luxembourg"
     ? "background:#E6E1EF; color:#4A3E6B;"
-    : "background:#EFD9D3; color:#8B3A2B;";
+    : e.domicile === "Hong Kong"
+    ? "background:#EFD9D3; color:#8B3A2B;"
+    : "background:#DED5C2; color:#6B6255;";
   const domNote = e.domicile === "Hong Kong"
     ? '<p style="font-size:11px; color:var(--ink-soft); margin:5px 0 0;">Not UCITS — outside the Ireland / Luxembourg screen</p>'
+    : etfSelect.value === "CUSTOM"
+    ? '<p style="font-size:11px; color:var(--ink-soft); margin:5px 0 0;">User-supplied entry — not verified against a data source</p>'
     : "";
   fundCard.innerHTML = `
     <div class="fname">
@@ -531,7 +587,15 @@ function renderAll() {
   renderTiers();
 }
 
-[etfSelect, lumpSumEl, monthlyEl, grossReturnEl].forEach((el) => el.addEventListener("input", renderAll));
+function toggleCustomPanel() {
+  customPanel.style.display = etfSelect.value === "CUSTOM" ? "block" : "none";
+}
+
+[etfSelect, lumpSumEl, monthlyEl, grossReturnEl, customTicker, customDomicile, customTer, customNav].forEach((el) =>
+  el.addEventListener("input", renderAll)
+);
+etfSelect.addEventListener("change", toggleCustomPanel);
+toggleCustomPanel();
 btnValue.addEventListener("click", () => { viewMode = "value"; btnValue.classList.add("active"); btnFee.classList.remove("active"); renderAll(); });
 btnFee.addEventListener("click", () => { viewMode = "fee"; btnFee.classList.add("active"); btnValue.classList.remove("active"); renderAll(); });
 
