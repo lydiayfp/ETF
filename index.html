@@ -1,7 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>ETF Compounding Ledger</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #C7BFAF;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+</style>
 <style>
   :root {
     --bg: #C7BFAF;
@@ -37,52 +55,53 @@
   }
   .eyebrow {
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 0.12em;
+    font-size: 12px;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--ink-soft);
-    margin: 0 0 4px;
+    margin: 0 0 6px;
   }
   .headline {
-    font-size: 22px;
+    font-size: 28px;
     font-weight: 500;
-    margin: 0 0 4px;
-    line-height: 1.18;
+    margin: 0 0 8px;
+    line-height: 1.2;
   }
   .subline {
-    font-size: 13px;
+    font-size: 15px;
+    line-height: 1.5;
     color: var(--ink-soft);
-    margin: 0 0 18px;
+    margin: 0 0 24px;
     max-width: 46ch;
   }
   .rule {
     border: none;
     border-top: 1px solid var(--rule);
-    margin: 18px 0;
+    margin: 22px 0;
   }
   .field-label {
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 11.5px;
+    font-size: 12.5px;
     letter-spacing: 0.04em;
     text-transform: uppercase;
     color: var(--ink-soft);
     display: block;
-    margin-bottom: 7px;
+    margin-bottom: 8px;
   }
   .field {
-    margin-bottom: 16px;
+    margin-bottom: 18px;
   }
   #ledger-root select,
   #ledger-root input[type="number"] {
     width: 100%;
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 19px;
+    font-size: 22px;
     font-weight: 500;
     color: var(--ink);
     background: var(--panel);
     border: 1.5px solid var(--rule);
-    border-radius: 6px;
-    padding: 14px 16px;
+    border-radius: 8px;
+    padding: 16px 18px;
     appearance: none;
     -webkit-appearance: none;
   }
@@ -117,10 +136,10 @@
   .toggle-btn {
     flex: 1;
     font-family: 'IBM Plex Sans', sans-serif;
-    font-size: 13.5px;
+    font-size: 15px;
     font-weight: 500;
-    padding: 12px 8px;
-    border-radius: 6px;
+    padding: 14px 8px;
+    border-radius: 7px;
     border: none;
     background: transparent;
     color: var(--ink-soft);
@@ -148,20 +167,20 @@
   .fund-card p { margin: 0; }
   .fc-label {
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 10.5px;
+    font-size: 11.5px;
     letter-spacing: 0.05em;
     text-transform: uppercase;
     color: var(--ink-soft);
-    margin-bottom: 4px !important;
+    margin-bottom: 5px !important;
   }
   .fc-value {
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 15px;
+    font-size: 16.5px;
     font-weight: 500;
   }
   .fc-name {
     font-family: 'Fraunces', serif;
-    font-size: 16.5px;
+    font-size: 18px;
     font-weight: 500;
   }
   .badge {
@@ -189,8 +208,8 @@
   .chart-wrap {
     position: relative;
     width: 100%;
-    height: 260px;
-    margin-top: 10px;
+    height: 280px;
+    margin-top: 12px;
   }
   .legend-row {
     display: flex;
@@ -219,26 +238,26 @@
   }
   .tier-yr {
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 11.5px;
+    font-size: 12.5px;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--ink-soft);
-    margin: 0 0 8px;
+    margin: 0 0 9px;
   }
   .tier-total {
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 21px;
+    font-size: 23px;
     font-weight: 600;
-    margin: 0 0 6px;
-    padding-bottom: 6px;
+    margin: 0 0 8px;
+    padding-bottom: 7px;
     border-bottom: 3px double var(--ink);
     display: inline-block;
   }
   .tier-sub {
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 12px;
+    font-size: 13px;
     color: var(--ink-soft);
-    margin: 2px 0 0;
+    margin: 3px 0 0;
   }
   .data-caveat {
     font-size: 12px;
@@ -247,6 +266,8 @@
   }
 </style>
 
+</head>
+<body>
 <div id="ledger-root">
   <h2 class="sr-only">Interactive ledger showing compound growth of an ETF investment over 10, 15, 20 and 30 years, comparing gross returns against returns net of the total expense ratio</h2>
 
@@ -516,3 +537,5 @@ btnFee.addEventListener("click", () => { viewMode = "fee"; btnFee.classList.add(
 
 renderAll();
 </script>
+-e </body>
+</html>
