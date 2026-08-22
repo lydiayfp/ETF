@@ -268,6 +268,7 @@
 
 </head>
 <body>
+<div id="pullIndicator" style="position:fixed; top:-50px; left:0; right:0; text-align:center; padding:14px; font-family:'IBM Plex Mono',monospace; font-size:12px; color:#6B6255; background:#DED5C2; transition:top 0.2s; z-index:50;">↓ Pull to refresh NAV</div>
 <div id="ledger-root">
   <h2 class="sr-only">Interactive ledger showing compound growth of an ETF investment over 10, 15, 20 and 30 years, comparing gross returns against returns net of the total expense ratio</h2>
 
@@ -355,6 +356,11 @@
     <button class="toggle-btn" id="btnFee">TER cost impact only</button>
   </div>
 
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+    <p style="font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:var(--ink-soft); margin:0;" id="navStatusLine">Static data, as sourced</p>
+    <button id="btnRefresh" style="font-family:'IBM Plex Sans', sans-serif; font-size:12.5px; font-weight:500; color:var(--forest); background:var(--panel-alt); border:1px solid var(--rule); border-radius:6px; padding:7px 12px; cursor:pointer;">↻ Refresh NAV</button>
+  </div>
+
   <div id="fundCard" class="fund-card"></div>
 
   <div class="chart-card">
@@ -372,23 +378,23 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
 const ETFS = {
-  VWRA: { name: "Vanguard FTSE All-World UCITS ETF (USD) Acc", domicile: "Ireland", isin: "IE00BK5BQT80", nav: 193.50, navCcy: "USD", navDate: "19 Aug 2026 (LSE)", aum: 48732, aumCcy: "EUR", ter: 0.14, trackDiff: null, replication: "Physical (sampling)" },
-  FWRA: { name: "Invesco FTSE All-World UCITS ETF Acc", domicile: "Ireland", isin: "IE000716YHJ7", nav: 9.16, navCcy: "USD", navDate: "20 Jul 2026 (Cbonds)", aum: 4547, aumCcy: "EUR", ter: 0.15, trackDiff: null, replication: "Physical (sampling)" },
-  ACWD: { name: "SPDR MSCI ACWI UCITS ETF Acc", domicile: "Ireland", isin: "IE00B44Z5B48", nav: 324.69, navCcy: "USD", navDate: "15 Jun 2026 (LSE)", aum: 17700, aumCcy: "USD", ter: 0.12, trackDiff: null, replication: "Physical (optimized sampling)" },
-  ISAC: { name: "iShares MSCI ACWI UCITS ETF USD Acc", domicile: "Ireland", isin: "IE00B6R52259", nav: 125.35, navCcy: "USD", navDate: "14 Aug 2026 (LSE)", aum: 30918, aumCcy: "EUR", ter: 0.20, trackDiff: null, replication: "Physical (sampling)" },
-  IMID: { name: "SPDR MSCI ACWI IMI UCITS ETF Acc", domicile: "Ireland", isin: "IE00B3YLTY66", nav: 13.54, navCcy: "USD", navDate: "14 Aug 2026 (LSE)", aum: 7173, aumCcy: "EUR", ter: 0.17, trackDiff: null, replication: "Physical (optimised)" },
-  V3AA: { name: "Vanguard ESG Global All Cap UCITS ETF (USD) Acc", domicile: "Ireland", isin: "IE00BNG8L278", nav: 8.80, navCcy: "USD", navDate: "1 Jun 2026 (LSE)", aum: 1310, aumCcy: "USD", ter: 0.24, trackDiff: 0.08, replication: "Physical" },
-  EXUS: { name: "Xtrackers MSCI World ex USA UCITS ETF 1C", domicile: "Ireland", isin: "IE0006WW1TQ4", nav: 47.30, navCcy: "USD", navDate: "14 Aug 2026 (LSE)", aum: 6800, aumCcy: "EUR", ter: 0.15, trackDiff: null, replication: "Physical (full replication)" },
-  CSPX: { name: "iShares Core S&P 500 UCITS ETF USD Acc", domicile: "Ireland", isin: "IE00B5BMR087", nav: 833.71, navCcy: "USD", navDate: "12 Aug 2026 (LSE)", aum: 146691, aumCcy: "USD", ter: 0.07, trackDiff: null, replication: "Physical (full replication)" },
-  CNDX: { name: "iShares NASDAQ 100 UCITS ETF USD Acc", domicile: "Ireland", isin: "IE00B53SZB19", nav: 1677.81, navCcy: "USD", navDate: "20 Aug 2026 (iShares)", aum: 27924, aumCcy: "USD", ter: 0.30, trackDiff: null, replication: "Physical (full replication)" },
-  XNAQ: { name: "Xtrackers Nasdaq 100 UCITS ETF 1C", domicile: "Ireland", isin: "IE00BMFKG444", nav: 70.51, navCcy: "GBP", navDate: "23 Jun 2026 (LSE)", aum: 1858, aumCcy: "GBP", ter: 0.20, trackDiff: null, replication: "Physical (full replication)" },
-  EIMI: { name: "iShares Core MSCI EM IMI UCITS ETF USD Acc", domicile: "Ireland", isin: "IE00BKM4GZ66", nav: 53.85, navCcy: "USD", navDate: "4 Aug 2026 (LSE)", aum: 38224, aumCcy: "EUR", ter: 0.18, trackDiff: null, replication: "Physical (full replication)" },
-  HK2823: { name: "iShares FTSE China A50 ETF", domicile: "Hong Kong", isin: "HK2823028546", nav: 17.12, navCcy: "HKD", navDate: "27 Jul 2026 (HKEX)", aum: 13420, aumCcy: "HKD", ter: 0.99, trackDiff: null, replication: "Synthetic (swaps + A-share access products)" },
-  HK3010: { name: "iShares Core MSCI Asia ex Japan ETF", domicile: "Hong Kong", isin: "HK0000051877", nav: 76.64, navCcy: "HKD", navDate: "10 Mar 2026 (HKEX)", aum: 8430, aumCcy: "HKD", ter: 0.33, trackDiff: null, replication: "Physical (sampling)" },
-  AGGG: { name: "iShares Core Global Aggregate Bond UCITS ETF USD (Dist)", domicile: "Ireland", isin: "IE00B3F81409", nav: 4.32, navCcy: "USD", navDate: "5 Aug 2026 (LSE)", aum: 14225, aumCcy: "USD", ter: 0.10, trackDiff: null, replication: "Physical (sampling)" },
-  VUAA: { name: "Vanguard S&P 500 UCITS ETF (USD) Acc", domicile: "Ireland", isin: "IE00BFMXXD54", nav: 127.54, navCcy: "EUR", navDate: "Aug 2026", aum: 30800, aumCcy: "EUR", ter: 0.07, trackDiff: 0.02, replication: "Physical (full replication)" },
-  IWDA: { name: "iShares Core MSCI World UCITS ETF (Acc)", domicile: "Ireland", isin: "IE00B4L5Y983", nav: 128.35, navCcy: "EUR", navDate: "Aug 2026", aum: 129600, aumCcy: "EUR", ter: 0.20, trackDiff: 0.03, replication: "Physical (optimized sampling)" },
-  LCUW: { name: "Amundi Core MSCI World UCITS ETF Acc", domicile: "Luxembourg", isin: "LU1781541179", nav: null, navCcy: "USD", navDate: "n/a", aum: 6890, aumCcy: "USD", ter: 0.12, trackDiff: 0.06, replication: "Physical (full replication)" }
+  VWRA: { name: "Vanguard FTSE All-World UCITS ETF (USD) Acc", domicile: "Ireland", isin: "IE00BK5BQT80", nav: 193.50, navCcy: "USD", navDate: "19 Aug 2026 (LSE)", aum: 48732, aumCcy: "EUR", ter: 0.14, trackDiff: null, replication: "Physical (sampling)", stooq: "vwra.uk" },
+  FWRA: { name: "Invesco FTSE All-World UCITS ETF Acc", domicile: "Ireland", isin: "IE000716YHJ7", nav: 9.16, navCcy: "USD", navDate: "20 Jul 2026 (Cbonds)", aum: 4547, aumCcy: "EUR", ter: 0.15, trackDiff: null, replication: "Physical (sampling)", stooq: "fwra.uk" },
+  ACWD: { name: "SPDR MSCI ACWI UCITS ETF Acc", domicile: "Ireland", isin: "IE00B44Z5B48", nav: 324.69, navCcy: "USD", navDate: "15 Jun 2026 (LSE)", aum: 17700, aumCcy: "USD", ter: 0.12, trackDiff: null, replication: "Physical (optimized sampling)", stooq: "acwd.uk" },
+  ISAC: { name: "iShares MSCI ACWI UCITS ETF USD Acc", domicile: "Ireland", isin: "IE00B6R52259", nav: 125.35, navCcy: "USD", navDate: "14 Aug 2026 (LSE)", aum: 30918, aumCcy: "EUR", ter: 0.20, trackDiff: null, replication: "Physical (sampling)", stooq: "isac.uk" },
+  IMID: { name: "SPDR MSCI ACWI IMI UCITS ETF Acc", domicile: "Ireland", isin: "IE00B3YLTY66", nav: 13.54, navCcy: "USD", navDate: "14 Aug 2026 (LSE)", aum: 7173, aumCcy: "EUR", ter: 0.17, trackDiff: null, replication: "Physical (optimised)", stooq: "imid.uk" },
+  V3AA: { name: "Vanguard ESG Global All Cap UCITS ETF (USD) Acc", domicile: "Ireland", isin: "IE00BNG8L278", nav: 8.80, navCcy: "USD", navDate: "1 Jun 2026 (LSE)", aum: 1310, aumCcy: "USD", ter: 0.24, trackDiff: 0.08, replication: "Physical", stooq: "v3aa.uk" },
+  EXUS: { name: "Xtrackers MSCI World ex USA UCITS ETF 1C", domicile: "Ireland", isin: "IE0006WW1TQ4", nav: 47.30, navCcy: "USD", navDate: "14 Aug 2026 (LSE)", aum: 6800, aumCcy: "EUR", ter: 0.15, trackDiff: null, replication: "Physical (full replication)", stooq: "exus.uk" },
+  CSPX: { name: "iShares Core S&P 500 UCITS ETF USD Acc", domicile: "Ireland", isin: "IE00B5BMR087", nav: 833.71, navCcy: "USD", navDate: "12 Aug 2026 (LSE)", aum: 146691, aumCcy: "USD", ter: 0.07, trackDiff: null, replication: "Physical (full replication)", stooq: "cspx.uk" },
+  CNDX: { name: "iShares NASDAQ 100 UCITS ETF USD Acc", domicile: "Ireland", isin: "IE00B53SZB19", nav: 1677.81, navCcy: "USD", navDate: "20 Aug 2026 (iShares)", aum: 27924, aumCcy: "USD", ter: 0.30, trackDiff: null, replication: "Physical (full replication)", stooq: "cndx.uk" },
+  XNAQ: { name: "Xtrackers Nasdaq 100 UCITS ETF 1C", domicile: "Ireland", isin: "IE00BMFKG444", nav: 70.51, navCcy: "GBP", navDate: "23 Jun 2026 (LSE)", aum: 1858, aumCcy: "GBP", ter: 0.20, trackDiff: null, replication: "Physical (full replication)", stooq: "xnaq.uk" },
+  EIMI: { name: "iShares Core MSCI EM IMI UCITS ETF USD Acc", domicile: "Ireland", isin: "IE00BKM4GZ66", nav: 53.85, navCcy: "USD", navDate: "4 Aug 2026 (LSE)", aum: 38224, aumCcy: "EUR", ter: 0.18, trackDiff: null, replication: "Physical (full replication)", stooq: "eimi.uk" },
+  HK2823: { name: "iShares FTSE China A50 ETF", domicile: "Hong Kong", isin: "HK2823028546", nav: 17.12, navCcy: "HKD", navDate: "27 Jul 2026 (HKEX)", aum: 13420, aumCcy: "HKD", ter: 0.99, trackDiff: null, replication: "Synthetic (swaps + A-share access products)", stooq: "2823.hk" },
+  HK3010: { name: "iShares Core MSCI Asia ex Japan ETF", domicile: "Hong Kong", isin: "HK0000051877", nav: 76.64, navCcy: "HKD", navDate: "10 Mar 2026 (HKEX)", aum: 8430, aumCcy: "HKD", ter: 0.33, trackDiff: null, replication: "Physical (sampling)", stooq: "3010.hk" },
+  AGGG: { name: "iShares Core Global Aggregate Bond UCITS ETF USD (Dist)", domicile: "Ireland", isin: "IE00B3F81409", nav: 4.32, navCcy: "USD", navDate: "5 Aug 2026 (LSE)", aum: 14225, aumCcy: "USD", ter: 0.10, trackDiff: null, replication: "Physical (sampling)", stooq: "aggg.uk" },
+  VUAA: { name: "Vanguard S&P 500 UCITS ETF (USD) Acc", domicile: "Ireland", isin: "IE00BFMXXD54", nav: 127.54, navCcy: "EUR", navDate: "Aug 2026", aum: 30800, aumCcy: "EUR", ter: 0.07, trackDiff: 0.02, replication: "Physical (full replication)", stooq: "vuaa.uk" },
+  IWDA: { name: "iShares Core MSCI World UCITS ETF (Acc)", domicile: "Ireland", isin: "IE00B4L5Y983", nav: 128.35, navCcy: "EUR", navDate: "Aug 2026", aum: 129600, aumCcy: "EUR", ter: 0.20, trackDiff: 0.03, replication: "Physical (optimized sampling)", stooq: "iwda.uk" },
+  LCUW: { name: "Amundi Core MSCI World UCITS ETF Acc", domicile: "Luxembourg", isin: "LU1781541179", nav: null, navCcy: "USD", navDate: "n/a", aum: 6890, aumCcy: "USD", ter: 0.12, trackDiff: 0.06, replication: "Physical (full replication)", stooq: null }
 };
 
 const HORIZONS = [10, 15, 20, 30];
@@ -427,6 +433,90 @@ function getActiveFund() {
   }
   return ETFS[etfSelect.value];
 }
+
+let navStatus = "static"; // "static" | "loading" | "live" | "error"
+const navStatusLine = document.getElementById("navStatusLine");
+const btnRefresh = document.getElementById("btnRefresh");
+const pullIndicator = document.getElementById("pullIndicator");
+
+function fetchWithTimeout(url, ms) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(timer));
+}
+
+async function refreshActiveNav() {
+  const key = etfSelect.value;
+  if (key === "CUSTOM") { navStatus = "static"; updateNavStatusLine(); return; }
+  const fund = ETFS[key];
+  if (!fund.stooq) { navStatus = "static"; updateNavStatusLine(); return; }
+
+  navStatus = "loading";
+  updateNavStatusLine();
+  try {
+    const res = await fetchWithTimeout(
+      "https://stooq.com/q/l/?s=" + encodeURIComponent(fund.stooq) + "&f=sd2t2ohlcv&h&e=csv",
+      6000
+    );
+    if (!res.ok) throw new Error("bad response");
+    const text = await res.text();
+    const rows = text.trim().split("\n");
+    const cols = (rows[1] || "").split(",");
+    const close = parseFloat(cols[6]);
+    if (!cols[6] || cols[6] === "N/D" || isNaN(close) || close <= 0) throw new Error("no data");
+    fund.liveNav = close;
+    fund.liveNavDate = cols[1] + " " + cols[2];
+    navStatus = "live";
+  } catch (err) {
+    navStatus = "error";
+  }
+  updateNavStatusLine();
+  renderFundCard();
+}
+
+function updateNavStatusLine() {
+  if (navStatus === "loading") {
+    navStatusLine.textContent = "Fetching live NAV…";
+  } else if (navStatus === "live") {
+    navStatusLine.textContent = "● Live NAV fetched just now";
+    navStatusLine.style.color = "#2F4A3C";
+  } else if (navStatus === "error") {
+    navStatusLine.textContent = "Live fetch blocked or unavailable — showing static data";
+    navStatusLine.style.color = "#8B3A2B";
+  } else {
+    navStatusLine.textContent = "Static data, as sourced";
+    navStatusLine.style.color = "#6B6255";
+  }
+}
+
+btnRefresh.addEventListener("click", refreshActiveNav);
+window.addEventListener("load", refreshActiveNav);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") refreshActiveNav();
+});
+
+// Pull-to-refresh gesture
+let touchStartY = null;
+let pulling = false;
+document.addEventListener("touchstart", (e) => {
+  if (window.scrollY <= 0) touchStartY = e.touches[0].clientY;
+}, { passive: true });
+document.addEventListener("touchmove", (e) => {
+  if (touchStartY === null) return;
+  const delta = e.touches[0].clientY - touchStartY;
+  if (delta > 10 && window.scrollY <= 0) {
+    pulling = true;
+    pullIndicator.style.top = Math.min(delta - 40, 10) + "px";
+  }
+}, { passive: true });
+document.addEventListener("touchend", () => {
+  if (pulling) {
+    pullIndicator.style.top = "-50px";
+    refreshActiveNav();
+  }
+  touchStartY = null;
+  pulling = false;
+});
 
 function fmtMoney(v) { return "$" + Math.round(v).toLocaleString("en-US"); }
 function fmtAum(v, ccy) {
@@ -483,8 +573,14 @@ function renderFundCard() {
     </div>
     <div>
       <p class="fc-label">NAV / spot</p>
-      <p class="fc-value">${e.nav ? (e.navCcy === "EUR" ? "\u20ac" : e.navCcy === "GBP" ? "\u00a3" : e.navCcy === "HKD" ? "HK$" : "$") + e.nav.toFixed(2) : "n/a"}</p>
-      <p style="font-size:11px; color:var(--ink-soft); margin:3px 0 0;">${e.navDate}</p>
+      <p class="fc-value">${
+        e.liveNav
+          ? "$" + e.liveNav.toFixed(2)
+          : e.nav
+          ? (e.navCcy === "EUR" ? "\u20ac" : e.navCcy === "GBP" ? "\u00a3" : e.navCcy === "HKD" ? "HK$" : "$") + e.nav.toFixed(2)
+          : "n/a"
+      }${e.liveNav ? ' <span style="font-size:10px; font-weight:600; color:#2F4A3C; background:#DCE6DE; padding:1px 6px; border-radius:3px; vertical-align:middle;">LIVE</span>' : ""}</p>
+      <p style="font-size:11px; color:var(--ink-soft); margin:3px 0 0;">${e.liveNav ? "Stooq, " + e.liveNavDate : e.navDate}</p>
     </div>
     <div>
       <p class="fc-label">AUM</p>
@@ -594,7 +690,10 @@ function toggleCustomPanel() {
 [etfSelect, lumpSumEl, monthlyEl, grossReturnEl, customTicker, customDomicile, customTer, customNav].forEach((el) =>
   el.addEventListener("input", renderAll)
 );
-etfSelect.addEventListener("change", toggleCustomPanel);
+etfSelect.addEventListener("change", () => {
+  toggleCustomPanel();
+  refreshActiveNav();
+});
 toggleCustomPanel();
 btnValue.addEventListener("click", () => { viewMode = "value"; btnValue.classList.add("active"); btnFee.classList.remove("active"); renderAll(); });
 btnFee.addEventListener("click", () => { viewMode = "fee"; btnFee.classList.add("active"); btnValue.classList.remove("active"); renderAll(); });
